@@ -3,36 +3,49 @@
 "use client";
 
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import Dropzone from "react-dropzone";
+import { toast } from "react-toastify"; // Import toast
 
 const Page = () => {
   const [file, setFile] = useState<File | null>(null);
-
+  const router = useRouter();
   const handleClick = async () => {
     if (!file) {
-      console.log("No file selected");
+      toast.error("No file selected");
       return;
     }
 
     try {
-      // Step 1: Request a signed URL from the backend
-      const { data: signedUrlResponse } = await axios.post("/api/upload", {
-        fileName: "test1.pdf",
-        fileType: file.type,
-      });
+      // Show a loading toast with promise
+      await toast.promise(
+        (async () => {
+          // Step 1: Request a signed URL from the backend
+          const { data: signedUrlResponse } = await axios.post("/api/upload", {
+            fileName: file.name, // Dynamic file name
+            fileType: file.type,
+          });
 
-      const { uploadUrl } = signedUrlResponse;
+          const { uploadUrl } = signedUrlResponse;
 
-      // Step 2: Upload the file to S3
-      await axios.put(uploadUrl, file, {
-        headers: {
-          "Content-Type": file.type,
+          // Step 2: Upload the file to S3
+          await axios.put(uploadUrl, file, {
+            headers: {
+              "Content-Type": file.type,
+            },
+          });
+
+          router.push("/data");
+        })(),
+        {
+          pending: "Uploading file...",
+          success: "File uploaded successfully!",
+          error: "Error uploading file.",
         },
-      });
-
-      console.log("File uploaded successfully");
+      );
     } catch (e) {
+      toast.error("Error uploading file");
       console.error("Error uploading file:", e);
     }
   };

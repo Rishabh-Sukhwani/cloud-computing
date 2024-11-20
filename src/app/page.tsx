@@ -1,29 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 "use client";
+
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Dropzone from "react-dropzone";
 
 const Page = () => {
   const [file, setFile] = useState<File | null>(null);
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  useEffect(() => {
-    if (file) {
-      const convertFile = async () => {
-        const base64File = await fileToBase64(file);
-        console.log(base64File);
-      };
-      void convertFile();
-    }
-  }, [file]);
 
   const handleClick = async () => {
     if (!file) {
@@ -32,17 +16,24 @@ const Page = () => {
     }
 
     try {
-      const base64File = await fileToBase64(file);
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_BASEURL}/upload`,
-        {
-          file: base64File,
-          file_name: file.name,
+      // Step 1: Request a signed URL from the backend
+      const { data: signedUrlResponse } = await axios.post("/api/upload", {
+        fileName: "test1.pdf",
+        fileType: file.type,
+      });
+
+      const { uploadUrl } = signedUrlResponse;
+
+      // Step 2: Upload the file to S3
+      await axios.put(uploadUrl, file, {
+        headers: {
+          "Content-Type": file.type,
         },
-      );
-      console.log(response.data);
+      });
+
+      console.log("File uploaded successfully");
     } catch (e) {
-      console.log(e);
+      console.error("Error uploading file:", e);
     }
   };
 
